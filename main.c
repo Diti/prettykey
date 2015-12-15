@@ -2,55 +2,92 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sysexits.h>
 #include <unistd.h>
+#include <util.h>
 
 #define PROGRAM_NAME  "prettykey"
 #define GNUPG_BINARY  "gpg"
 
-int init_mpty(void)
+void
+usage(char *program_name)
 {
-  int masterfd;
-
-  masterfd = posix_openpt(O_RDWR);
-  if (masterfd == -1
-    || grantpt(masterfd) == -1
-    || unlockpt(masterfd) == -1)
-  {
-    perror(PROGRAM_NAME);
-    return -1;
-  }
-  return masterfd;
+  (void)program_name;
+  printf("%s <passphrase>\n", PROGRAM_NAME);
+  exit(EX_USAGE);
 }
 
-int main(void)
+int
+pty_setup(int *fd)
 {
-  int masterfd, slavefd;
+  pid_t pid = forkpty(fd, NULL, NULL, NULL);
+  char *gnupg_args[] = { GNUPG_BINARY, "--gen-key", "--expert", NULL };
 
-  if ((masterfd = init_mpty()) == -1)
-    return EXIT_FAILURE;
-
-  slavefd = open(ptsname(masterfd), O_RDWR);
-  if (slavefd == -1)
-  {
-    perror(PROGRAM_NAME);
-    return EXIT_FAILURE;
+  if (pid == -1) {
+    perror("forkpty");
+    exit(EX_OSERR);
+  } else if (pid == 0) {
+    if (execvp(gnupg_args[0], gnupg_args) == -1) {
+      if (errno == ENOENT) {
+        fprintf(stderr, "%s: %s was not found in your PATH.\n", PROGRAM_NAME, GNUPG_BINARY);
+        return 0;
+      } else {
+        perror("execvp");
+        return 0;
+      }
+    }
+    return 1;
+  } else {
+    close(0);
   }
 
-  char  *gnupg_args[] =
-  {
-    GNUPG_BINARY,
-    "--gen-key",
-    "--expert",
-    NULL
-  };
-  if (execvp(gnupg_args[0], gnupg_args) == -1)
-  {
-    if (errno == ENOENT)
-      fprintf(stderr, "%s: %s was not found in your PATH.\n", PROGRAM_NAME, GNUPG_BINARY);
-    else
-      perror(PROGRAM_NAME);
-    return EXIT_FAILURE;
+  // Set non-blocking
+  int flags;
+  if ((flags = fcntl(*fd, F_GETFL, 0)) == -1)
+    flags = 0;
+  if (fcntl(*fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    perror("fcntl");
+    return 0;
+  }
+  return 1;
+}
+
+static void
+process_input(int fd)
+{
+  char buf[255];
+  while (1) {
+    int nread = read(fd, buf, 254);
+    if (nread == -1) {
+      if (errno == EAGAIN) {
+        usleep(1000);
+        continue;
+      }
+      perror("read");
+      break;
+    }
+    int i;
+    for (i = 0; i < nread; i++) {
+      putchar(buf[i]);
+    }
+  }
+}
+
+int main(int argc, char *argv[])
+{
+  int fd;
+
+  if (argc < 2) {
+    usage(argv[0]);
   }
 
-  return EXIT_SUCCESS;
+  if (!pty_setup(&fd)) {
+    perror("pty_setup()");
+    exit(EX_OSERR);
+  }
+
+  write(fd, "8\n", 2);
+
+  process_input(fd);
+  return EX_OK;
 }
