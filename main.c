@@ -2,12 +2,17 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <util.h>
 
 #define PROGRAM_NAME  "prettykey"
 #define GNUPG_BINARY  "gpg"
+
+#define GPG_UID_NAME    "Dimitri Torterat"
+#define GPG_UID_EMAIL   ""
+#define GPG_UID_COMMENT "born 1990-05-26 in Melun, France"
 
 void
 usage(char *program_name)
@@ -21,7 +26,16 @@ int
 pty_setup(int *fd)
 {
   pid_t pid = forkpty(fd, NULL, NULL, NULL);
-  char *gnupg_args[] = { GNUPG_BINARY, "--gen-key", "--expert", NULL };
+  char *gnupg_args[] = {
+    GNUPG_BINARY,
+    "--gen-key",
+    "--expert",
+    "--no-default-keyring",
+    "--keyring=" PROGRAM_NAME "_pubring.gpg",
+    "--secret-keyring=" PROGRAM_NAME "secring.gpg",
+    NULL
+    //"--no-use-agent",
+  };
 
   if (pid == -1) {
     perror("forkpty");
@@ -36,6 +50,7 @@ pty_setup(int *fd)
         return 0;
       }
     }
+
     return 1;
   } else {
     close(0);
@@ -73,6 +88,13 @@ process_input(int fd)
   }
 }
 
+inline static void
+write_endl(int fd, const char *str)
+{
+  write(fd, str, strlen(str));
+  write(fd, "\n", 1);
+}
+
 int main(int argc, char *argv[])
 {
   int fd;
@@ -86,7 +108,19 @@ int main(int argc, char *argv[])
     exit(EX_OSERR);
   }
 
-  write(fd, "8\n", 2);
+  write_endl(fd, "8");
+  write_endl(fd, "S");
+  write_endl(fd, "E");
+  write_endl(fd, "Q");
+  write_endl(fd, "4096");
+  write_endl(fd, "0");
+  write_endl(fd, "y");
+  write_endl(fd, GPG_UID_NAME);
+  write_endl(fd, GPG_UID_EMAIL);
+  write_endl(fd, GPG_UID_COMMENT);
+  write_endl(fd, "O");
+  write_endl(fd, argv[1]);
+  write_endl(fd, argv[1]);
 
   process_input(fd);
   return EX_OK;
