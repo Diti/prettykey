@@ -1,12 +1,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-#define PROGRAM_NAME  "prettykey"
-#define GNUPG_BINARY  "gpg2"
-#define GNUPG_SUBDIR  "GnuPG"
+#define PROGRAM_NAME    "prettykey"
+#define GNUPG_BINARY    "gpg2"
+#define GNUPG_SUBDIR    "GnuPG"
 
 #define GPG_UID_NAME    "Dimitri Torterat"
 #define GPG_UID_EMAIL   ""
@@ -117,6 +118,13 @@ int main(int argc, char *argv[])
 {
   if (argc < 2) {
     usage(argv[0]);
+  }
+
+  char *gpghome = gnupghome_dir();
+  if (mkdir(gpghome, 0700) == -1) {
+    if (errno != EEXIST) {
+      perror("mkdir");
+    }
   }
 
   call_gnupg_gen();
