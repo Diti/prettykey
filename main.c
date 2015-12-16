@@ -6,6 +6,7 @@
 
 #define PROGRAM_NAME  "prettykey"
 #define GNUPG_BINARY  "gpg2"
+#define GNUPG_SUBDIR  "GnuPG"
 
 #define GPG_UID_NAME    "Dimitri Torterat"
 #define GPG_UID_EMAIL   ""
@@ -19,25 +20,69 @@ usage(char *program_name)
   exit(EX_USAGE);
 }
 
+static char *
+gnupghome_dir(void)
+{
+  char  *cwd;
+  int   ret;
+  char  *str;
+
+  cwd = realpath(".", NULL);
+  if (!cwd)
+  {
+    perror("realpath()");
+    exit(EX_OSERR);
+  }
+
+  ret = asprintf(&str, "%s/%s", cwd, GNUPG_SUBDIR);
+  if (ret == -1)
+  {
+    perror("asprintf");
+    exit(EX_OSERR);
+  }
+  return str;
+}
+
+static char *
+gnupghome_arg()
+{
+  int   ret;
+  char  *str;
+  char  *tmp;
+
+  tmp = gnupghome_dir();
+
+  ret = asprintf(&str, "--home=%s", tmp);
+  if (ret == -1 || !tmp)
+  {
+    perror("asprintf");
+    exit(EX_OSERR);
+  }
+  free(tmp);
+  return str;
+}
+
 void
 call_gnupg_gen(void)
 {
+  char  *home_arg;
+
   pid_t pid = fork();
-  char *gnupg_args[] = {
-    GNUPG_BINARY,
-    "--full-gen-key",
-    "--expert",
-    "--no-default-keyring",
-    "--keyring=" PROGRAM_NAME "_pubring.gpg",
-    "--secret-keyring=" PROGRAM_NAME "_secring.gpg",
-	"--command-file=commands.txt",
-    NULL
-  };
 
   if (pid == -1) {
     perror("fork");
     exit(EX_OSERR);
   } else if (pid == 0) {
+
+    char *gnupg_args[] = {
+      GNUPG_BINARY,
+      home_arg = gnupghome_arg(),
+      "--full-gen-key",
+      "--expert",
+      "--command-file=commands.txt",
+      NULL
+    };
+
     if (execvp(gnupg_args[0], gnupg_args) == -1) {
       if (errno == ENOENT) {
         fprintf(stderr, "%s: %s was not found in your PATH.\n", PROGRAM_NAME, GNUPG_BINARY);
@@ -47,6 +92,8 @@ call_gnupg_gen(void)
         exit(EX_OSERR);
       }
     }
+    free(home_arg);
+    home_arg = NULL;
     exit(EX_OK);
   } else {
 	  int ret;
