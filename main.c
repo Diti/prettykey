@@ -5,7 +5,12 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <util.h>
+
+#if defined(__linux__)
+# include <pty.h>
+#elif defined(__APPLE__) || defined(__FreeBSD__)
+# include <util.h>
+#endif
 
 #define PROGRAM_NAME  "prettykey"
 #define GNUPG_BINARY  "gpg"
