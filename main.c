@@ -1,16 +1,8 @@
 #include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#if defined(__linux__)
-# include <pty.h>
-#elif defined(__APPLE__) || defined(__FreeBSD__)
-# include <util.h>
-#endif
 
 #define PROGRAM_NAME  "prettykey"
 #define GNUPG_BINARY  "gpg2"
@@ -27,105 +19,59 @@ usage(char *program_name)
   exit(EX_USAGE);
 }
 
-int
-pty_setup(int *fd)
+void
+call_gnupg_gen(void)
 {
-  pid_t pid = forkpty(fd, NULL, NULL, NULL);
+  pid_t pid = fork();
   char *gnupg_args[] = {
     GNUPG_BINARY,
-    "--gen-key",
+    "--full-gen-key",
     "--expert",
     "--no-default-keyring",
     "--keyring=" PROGRAM_NAME "_pubring.gpg",
     "--secret-keyring=" PROGRAM_NAME "_secring.gpg",
+	"--command-file=commands.txt",
     NULL
   };
 
   if (pid == -1) {
-    perror("forkpty");
+    perror("fork");
     exit(EX_OSERR);
   } else if (pid == 0) {
     if (execvp(gnupg_args[0], gnupg_args) == -1) {
       if (errno == ENOENT) {
         fprintf(stderr, "%s: %s was not found in your PATH.\n", PROGRAM_NAME, GNUPG_BINARY);
-        return 0;
+        exit(EX_UNAVAILABLE);
       } else {
         perror("execvp");
-        return 0;
+        exit(EX_OSERR);
       }
     }
-
-    return 1;
+    exit(EX_OK);
   } else {
-    close(0);
+	  int ret;
+	  waitpid(pid, &ret, 0);
+	  if (ret == 0) {
+		  // GnuPG exited normally
+	  } else {
+		  // GnuPG terminated with an error
+	  }
   }
-
-  // Set non-blocking
-  int flags;
-  if ((flags = fcntl(*fd, F_GETFL, 0)) == -1)
-    flags = 0;
-  if (fcntl(*fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-    perror("fcntl");
-    return 0;
-  }
-  return 1;
+  puts("Done.");
 }
 
-static void
-process_input(int fd)
-{
-  char buf[255];
-  while (1) {
-    int nread = read(fd, buf, 254);
-    if (nread == -1) {
-      if (errno == EAGAIN) {
-        usleep(1000);
-        continue;
-      }
-      perror("read");
-      break;
-    }
-    int i;
-    for (i = 0; i < nread; i++) {
-      putchar(buf[i]);
-    }
-  }
-}
-
-inline static void
-write_endl(int fd, const char *str)
-{
-  write(fd, str, strlen(str));
-  write(fd, "\n", 1);
-}
-
+/*
+ * This simple program works with GnuPG 2.1 and these settings:
+ * # https://wiki.archlinux.org/index.php/GnuPG#Unattended_passphrase
+ * - [~/.gnupg/gpg-agent.conf] allow-loopback-pinentry
+ * - [~/.gnupg/gpg.conf] pinentry-mode loopback
+ */
 int main(int argc, char *argv[])
 {
-  int fd;
-
   if (argc < 2) {
     usage(argv[0]);
   }
 
-  if (!pty_setup(&fd)) {
-    perror("pty_setup()");
-    exit(EX_OSERR);
-  }
-
-  write_endl(fd, "8");
-  write_endl(fd, "S");
-  write_endl(fd, "E");
-  write_endl(fd, "Q");
-  write_endl(fd, "4096");
-  write_endl(fd, "0");
-  write_endl(fd, "y");
-  write_endl(fd, GPG_UID_NAME);
-  write_endl(fd, GPG_UID_EMAIL);
-  write_endl(fd, GPG_UID_COMMENT);
-  write_endl(fd, "O");
-  write_endl(fd, argv[1]);
-  write_endl(fd, argv[1]);
-
-  process_input(fd);
+  call_gnupg_gen();
   return EX_OK;
 }
