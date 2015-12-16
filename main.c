@@ -13,7 +13,7 @@
 #endif
 
 #define PROGRAM_NAME  "prettykey"
-#define GNUPG_BINARY  "gpg"
+#define GNUPG_BINARY  "gpg2"
 
 #define GPG_UID_NAME    "Dimitri Torterat"
 #define GPG_UID_EMAIL   ""
@@ -37,9 +37,8 @@ pty_setup(int *fd)
     "--expert",
     "--no-default-keyring",
     "--keyring=" PROGRAM_NAME "_pubring.gpg",
-    "--secret-keyring=" PROGRAM_NAME "secring.gpg",
+    "--secret-keyring=" PROGRAM_NAME "_secring.gpg",
     NULL
-    //"--no-use-agent",
   };
 
   if (pid == -1) {
