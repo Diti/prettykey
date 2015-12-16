@@ -96,13 +96,13 @@ call_gnupg_gen(void)
     home_arg = NULL;
     exit(EX_OK);
   } else {
-	  int ret;
-	  waitpid(pid, &ret, 0);
-	  if (ret == 0) {
-		  // GnuPG exited normally
-	  } else {
-		  // GnuPG terminated with an error
-	  }
+    int ret;
+    waitpid(pid, &ret, 0);
+    if (ret == 0) {
+      // GnuPG exited normally
+    } else {
+      // GnuPG terminated with an error
+    }
   }
   puts("Done.");
 }
