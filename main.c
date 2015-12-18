@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,7 +69,7 @@ gnupghome_arg()
 void
 call_gnupg_gen(void)
 {
-    char  *home_arg;
+    char    *home_arg;
 
     pid_t pid = fork();
 
@@ -108,11 +109,12 @@ call_gnupg_gen(void)
         }
         free(home_arg);
         home_arg = NULL;
-        exit(EX_OK);
+        _Exit(EX_OK);
     }
     else
     {
         int ret;
+
         waitpid(pid, &ret, 0);
         if (ret == 0)
         {
@@ -122,8 +124,10 @@ call_gnupg_gen(void)
         else
         {
             fprintf(stderr, "Key generation failed: %s returned an error.\n", GNUPG_BINARY);
-            exit(EX_OSERR);
+            _Exit(EX_OSERR);
         }
+
+        _Exit(EX_OK);
     }
 }
 
