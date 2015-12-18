@@ -7,6 +7,9 @@ indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+[*.c]
+indent_size = 4
+
 # Don't trim whitespace in Markdown so we can do two spaces for line breaks.
 [*.md]
 trim_trailing_whitespace = false
