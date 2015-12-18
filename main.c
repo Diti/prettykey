@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -128,14 +129,21 @@ int main(int argc, char *argv[])
     usage(argv[0]);
 
   char *gpghome = gnupghome_dir();
+
   if (mkdir(gpghome, 0700) == -1) {
     if (errno != EEXIST) {
         fprintf(stderr, "%s: mkdir %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR, strerror(errno));
-      perror("mkdir");
+        exit(EX_OSERR);
     }
   }
-  free(gpghome);
 
+  if (chmod(gpghome, 0700) == -1) // Enforce secure permissions
+  {
+    fprintf(stderr, "%s: chmod %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR, strerror(errno));
+    exit(EX_OSERR);
+  }
+
+  free(gpghome);
   call_gnupg_gen();
-  return EX_OK;
+  exit(EX_OK);
 }
