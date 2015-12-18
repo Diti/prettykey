@@ -11,10 +11,6 @@
 #define GNUPG_BINARY    "gpg2"
 #define GNUPG_SUBDIR    "GnuPG"
 
-#define GPG_UID_NAME    "Dimitri Torterat"
-#define GPG_UID_EMAIL   ""
-#define GPG_UID_COMMENT "born 1990-05-26 in Melun, France"
-
 void
 usage(char *program_name)
 {
@@ -105,7 +101,6 @@ call_gnupg_gen(void)
     home_arg = NULL;
     exit(EX_OK);
   } else {
-
     int ret;
     waitpid(pid, &ret, 0);
     if (ret == 0) {
@@ -145,6 +140,8 @@ int main(int argc, char *argv[])
   }
 
   free(gpghome);
+  gpghome = NULL;
+
   call_gnupg_gen();
   exit(EX_OK);
 }
