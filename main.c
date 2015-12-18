@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -17,7 +18,8 @@ void
 usage(char *program_name)
 {
   (void)program_name;
-  printf("%s <passphrase>\n", PROGRAM_NAME);
+  puts(PROGRAM_NAME);
+  puts("  This program has no defined options yet.");
   exit(EX_USAGE);
 }
 
@@ -31,14 +33,14 @@ gnupghome_dir(void)
   cwd = realpath(".", NULL);
   if (!cwd)
   {
-    perror("realpath()");
+    fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "realpath", strerror(errno));
     exit(EX_OSERR);
   }
 
   ret = asprintf(&str, "%s/%s", cwd, GNUPG_SUBDIR);
   if (ret == -1)
   {
-    perror("asprintf");
+    fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "asprintf", strerror(errno));
     exit(EX_OSERR);
   }
   return str;
@@ -53,10 +55,10 @@ gnupghome_arg()
 
   tmp = gnupghome_dir();
 
-  ret = asprintf(&str, "--home=%s", tmp);
+  ret = asprintf(&str, "--homedir=%s", tmp);
   if (ret == -1 || !tmp)
   {
-    perror("asprintf");
+    fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "asprintf", strerror(errno));
     exit(EX_OSERR);
   }
   free(tmp);
@@ -71,16 +73,20 @@ call_gnupg_gen(void)
   pid_t pid = fork();
 
   if (pid == -1) {
-    perror("fork");
+    fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "fork", strerror(errno));
     exit(EX_OSERR);
   } else if (pid == 0) {
 
     char *gnupg_args[] = {
       GNUPG_BINARY,
       home_arg = gnupghome_arg(),
+#if defined(DEBUG)
+      "--verbose",
+#endif
       "--full-gen-key",
       "--expert",
       "--command-file=commands.txt",
+      "--pinentry-mode=loopback",
       NULL
     };
 
@@ -89,7 +95,7 @@ call_gnupg_gen(void)
         fprintf(stderr, "%s: %s was not found in your PATH.\n", PROGRAM_NAME, GNUPG_BINARY);
         exit(EX_UNAVAILABLE);
       } else {
-        perror("execvp");
+        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, GNUPG_BINARY, strerror(errno));
         exit(EX_OSERR);
       }
     }
@@ -97,15 +103,17 @@ call_gnupg_gen(void)
     home_arg = NULL;
     exit(EX_OK);
   } else {
+
     int ret;
     waitpid(pid, &ret, 0);
     if (ret == 0) {
       // GnuPG exited normally
+      puts("Key generation succeeded.");
     } else {
-      // GnuPG terminated with an error
+      fprintf(stderr, "Key generation failed: %s returned an error.\n", GNUPG_BINARY);
+      exit(EX_OSERR);
     }
   }
-  puts("Done.");
 }
 
 /*
@@ -116,16 +124,17 @@ call_gnupg_gen(void)
  */
 int main(int argc, char *argv[])
 {
-  if (argc < 2) {
+  if (argc != 1)
     usage(argv[0]);
-  }
 
   char *gpghome = gnupghome_dir();
   if (mkdir(gpghome, 0700) == -1) {
     if (errno != EEXIST) {
+        fprintf(stderr, "%s: mkdir %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR, strerror(errno));
       perror("mkdir");
     }
   }
+  free(gpghome);
 
   call_gnupg_gen();
   return EX_OK;
