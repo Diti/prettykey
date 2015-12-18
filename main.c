@@ -70,6 +70,13 @@ void
 call_gnupg_gen(void)
 {
     char    *home_arg;
+    int     p[2];
+
+    if (pipe(p) == -1)
+    {
+        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "pipe", strerror(errno));
+        exit(EX_OSERR);
+    }
 
     pid_t pid = fork();
 
@@ -80,6 +87,29 @@ call_gnupg_gen(void)
     }
     else if (pid == 0)
     {
+        close(p[0]);
+
+        while ((dup2(p[1], STDOUT_FILENO) == -1))
+        {
+            if (errno != EINTR)
+            {
+                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "dup2", strerror(errno));
+                exit(EX_OSERR);
+            }
+        }
+#if defined(DEBUG)
+        while ((dup2(p[1], STDERR_FILENO) == -1))
+        {
+            if (errno != EINTR)
+            {
+                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "dup2", strerror(errno));
+                exit(EX_OSERR);
+            }
+        }
+#endif
+
+        close(p[1]);
+
         char *gnupg_args[] = {
             GNUPG_BINARY,
 #if defined(DEBUG)
@@ -115,7 +145,17 @@ call_gnupg_gen(void)
     {
         int ret;
 
+        close(p[1]);
         waitpid(pid, &ret, 0);
+
+#if defined(DEBUG)
+        char buffer[4096] = {0};
+        while (read(p[0], buffer, sizeof(buffer)) != 0)
+        {
+            printf("\n%s\n", buffer);
+        }
+#endif
+
         if (ret == 0)
         {
             // GnuPG exited normally
