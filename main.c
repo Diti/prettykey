@@ -80,13 +80,14 @@ call_gnupg_gen(void)
 
     char *gnupg_args[] = {
       GNUPG_BINARY,
-      home_arg = gnupghome_arg(),
 #if defined(DEBUG)
       "--verbose",
 #endif
+      home_arg = gnupghome_arg(),
       "--full-gen-key",
       "--expert",
       "--command-file=commands.txt",
+      "--passphrase-file=passphrase.txt",
       "--pinentry-mode=loopback",
       NULL
     };
