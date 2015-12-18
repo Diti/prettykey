@@ -1,3 +1,13 @@
+Usage
+=====
+
+```
+# `prettykey` needs to use its own `gpg-agent`; other instances must be killed
+killall gpg-agent
+# Run `prettykey` without any parameter (yet).
+./prettykey
+```
+
 Building
 ========
 
