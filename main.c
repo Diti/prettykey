@@ -13,10 +13,8 @@
 #define GNUPG_SUBDIR    "GnuPG"
 
 void
-usage(char *program_name)
+usage(void)
 {
-    (void)program_name;
-
     puts(PROGRAM_NAME);
     puts("  This program has no defined options yet.");
     exit(EX_USAGE);
@@ -179,8 +177,9 @@ call_gnupg_gen(void)
  */
 int main(int argc, char *argv[])
 {
+    (void)argv();
     if (argc != 1)
-        usage(argv[0]);
+        usage();
 
     char *gpghome = gnupghome_dir();
 
