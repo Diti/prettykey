@@ -12,9 +12,9 @@
 #define GNUPG_BINARY "gpg2"
 #define GNUPG_SUBDIR "GnuPG"
 
-void usage(char *program_name) {
-    (void)program_name;
-
+void
+usage(void)
+{
     puts(PROGRAM_NAME);
     puts("  This program has no defined options yet.");
     exit(EX_USAGE);
@@ -157,8 +157,9 @@ void call_gnupg_gen(void) {
  * - [~/.gnupg/gpg.conf] pinentry-mode loopback
  */
 int main(int argc, char *argv[]) {
+    (void)argv;
     if (argc != 1)
-        usage(argv[0]);
+        usage();
 
     char *gpghome = gnupghome_dir();
 
