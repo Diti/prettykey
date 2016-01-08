@@ -8,13 +8,11 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#define PROGRAM_NAME    "prettykey"
-#define GNUPG_BINARY    "gpg2"
-#define GNUPG_SUBDIR    "GnuPG"
+#define PROGRAM_NAME "prettykey"
+#define GNUPG_BINARY "gpg2"
+#define GNUPG_SUBDIR "GnuPG"
 
-void
-usage(char *program_name)
-{
+void usage(char *program_name) {
     (void)program_name;
 
     puts(PROGRAM_NAME);
@@ -22,43 +20,39 @@ usage(char *program_name)
     exit(EX_USAGE);
 }
 
-static char *
-gnupghome_dir(void)
-{
-    char  *cwd;
-    int   ret;
-    char  *str;
+static char *gnupghome_dir(void) {
+    char *cwd;
+    int ret;
+    char *str;
 
     cwd = realpath(".", NULL);
-    if (!cwd)
-    {
-        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "realpath", strerror(errno));
+    if (!cwd) {
+        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "realpath",
+                strerror(errno));
         exit(EX_OSERR);
     }
 
     ret = asprintf(&str, "%s/%s", cwd, GNUPG_SUBDIR);
-    if (ret == -1 || !str)
-    {
-        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "asprintf", strerror(errno));
+    if (ret == -1 || !str) {
+        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "asprintf",
+                strerror(errno));
         exit(EX_OSERR);
     }
 
     return str;
 }
 
-static char *
-gnupghome_arg()
-{
-    int   ret;
-    char  *str;
-    char  *tmp;
+static char *gnupghome_arg() {
+    int ret;
+    char *str;
+    char *tmp;
 
     tmp = gnupghome_dir();
 
     ret = asprintf(&str, "--homedir=%s", tmp);
-    if (ret == -1 || !tmp)
-    {
-        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "asprintf", strerror(errno));
+    if (ret == -1 || !tmp) {
+        fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "asprintf",
+                strerror(errno));
         exit(EX_OSERR);
     }
 
@@ -66,43 +60,35 @@ gnupghome_arg()
     return str;
 }
 
-void
-call_gnupg_gen(void)
-{
-    char    *home_arg;
-    int     p[2];
+void call_gnupg_gen(void) {
+    char *home_arg;
+    int p[2];
 
-    if (pipe(p) == -1)
-    {
+    if (pipe(p) == -1) {
         fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "pipe", strerror(errno));
         exit(EX_OSERR);
     }
 
     pid_t pid = fork();
 
-    if (pid == -1)
-    {
+    if (pid == -1) {
         fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "fork", strerror(errno));
         exit(EX_OSERR);
-    }
-    else if (pid == 0)
-    {
+    } else if (pid == 0) {
         close(p[0]);
 
-        while ((dup2(p[1], STDOUT_FILENO) == -1))
-        {
-            if (errno != EINTR)
-            {
-                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "dup2", strerror(errno));
+        while ((dup2(p[1], STDOUT_FILENO) == -1)) {
+            if (errno != EINTR) {
+                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "dup2",
+                        strerror(errno));
                 exit(EX_OSERR);
             }
         }
 #if defined(DEBUG)
-        while ((dup2(p[1], STDERR_FILENO) == -1))
-        {
-            if (errno != EINTR)
-            {
-                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "dup2", strerror(errno));
+        while ((dup2(p[1], STDERR_FILENO) == -1)) {
+            if (errno != EINTR) {
+                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, "dup2",
+                        strerror(errno));
                 exit(EX_OSERR);
             }
         }
@@ -124,25 +110,21 @@ call_gnupg_gen(void)
             NULL
         };
 
-        if (execvp(gnupg_args[0], gnupg_args) == -1)
-        {
-            if (errno == ENOENT)
-            {
-                fprintf(stderr, "%s: %s was not found in your PATH.\n", PROGRAM_NAME, GNUPG_BINARY);
+        if (execvp(gnupg_args[0], gnupg_args) == -1) {
+            if (errno == ENOENT) {
+                fprintf(stderr, "%s: %s was not found in your PATH.\n",
+                        PROGRAM_NAME, GNUPG_BINARY);
                 exit(EX_UNAVAILABLE);
-            }
-            else
-            {
-                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, GNUPG_BINARY, strerror(errno));
+            } else {
+                fprintf(stderr, "%s: %s: %s\n", PROGRAM_NAME, GNUPG_BINARY,
+                        strerror(errno));
                 exit(EX_OSERR);
             }
         }
         free(home_arg);
         home_arg = NULL;
         _Exit(EX_OK);
-    }
-    else
-    {
+    } else {
         int ret;
 
         close(p[1]);
@@ -150,20 +132,17 @@ call_gnupg_gen(void)
 
 #if defined(DEBUG)
         char buffer[4096] = {0};
-        while (read(p[0], buffer, sizeof(buffer)) != 0)
-        {
+        while (read(p[0], buffer, sizeof(buffer)) != 0) {
             printf("\n%s\n", buffer);
         }
 #endif
 
-        if (ret == 0)
-        {
+        if (ret == 0) {
             // GnuPG exited normally
             puts("Key generation succeeded.");
-        }
-        else
-        {
-            fprintf(stderr, "Key generation failed: %s returned an error.\n", GNUPG_BINARY);
+        } else {
+            fprintf(stderr, "Key generation failed: %s returned an error.\n",
+                    GNUPG_BINARY);
             _Exit(EX_OSERR);
         }
 
@@ -177,25 +156,24 @@ call_gnupg_gen(void)
  * - [~/.gnupg/gpg-agent.conf] allow-loopback-pinentry
  * - [~/.gnupg/gpg.conf] pinentry-mode loopback
  */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     if (argc != 1)
         usage(argv[0]);
 
     char *gpghome = gnupghome_dir();
 
-    if (mkdir(gpghome, 0700) == -1)
-    {
-        if (errno != EEXIST)
-        {
-            fprintf(stderr, "%s: mkdir %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR, strerror(errno));
+    if (mkdir(gpghome, 0700) == -1) {
+        if (errno != EEXIST) {
+            fprintf(stderr, "%s: mkdir %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR,
+                    strerror(errno));
             exit(EX_OSERR);
         }
     }
 
     if (chmod(gpghome, 0700) == -1) // Enforce secure permissions
     {
-        fprintf(stderr, "%s: chmod %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR, strerror(errno));
+        fprintf(stderr, "%s: chmod %s: %s\n", PROGRAM_NAME, GNUPG_SUBDIR,
+                strerror(errno));
         exit(EX_OSERR);
     }
 
