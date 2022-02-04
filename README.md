@@ -1,4 +1,4 @@
-Please do not us this.
+Please do not use this.
 
 Usage
 =====
